@@ -12,21 +12,30 @@ void myOutput(unsigned char byte)
 }
 
 int main(int argc, char* argv[]) {
+    cout << argv[argc-1]<<endl;
+    char ciffog[4]{'C', 'I', 'F', 'F'};
+    char caff[4]{'C', 'A', 'F', 'F'};
+    string testfilename=((string)argv[2]).substr(((string)argv[2]).find_last_of("/\\") + 1);
+    string::size_type const p(testfilename.find_last_of('.'));
+
+    string filenamefortest = testfilename.substr(0, p)+".jpg";
+
+
+
+
+    ifstream MyFile(argv[2], ios::binary);
+    if(MyFile.bad()){
+        return -1;
+    }
+    char first_len[8];
+    int64_t pos = 1;
+    vector<char> bytes(
+            (std::istreambuf_iterator<char>(MyFile)),
+            (std::istreambuf_iterator<char>()));
+
 
 
     if((string)argv[1]=="-caff"){
-        cout << argv[argc-1]<<endl;
-        char caff[4]{'C', 'A', 'F', 'F'};
-        char ciffog[4]{'C', 'I', 'F', 'F'};
-        string newfilename=((string)argv[2]).substr(0,((string)argv[2]).find_last_of('.'))+".jpg";
-        myFile.open(newfilename, std::ios_base::out | std::ios_base::binary);
-        ifstream MyFile(argv[2], ios::binary);
-        char first_len[8];
-        uint64_t pos = 1;
-        vector<char> bytes(
-                (std::istreambuf_iterator<char>(MyFile)),
-                (std::istreambuf_iterator<char>()));
-        MyFile.close();
 
         //First ID=1
         int id = (unsigned char)bytes.at(0);
@@ -38,9 +47,12 @@ int main(int argc, char* argv[]) {
             //cout << text[i];
         }
         pos += 8;
-        //uint64_t test = *(uint64_t *)text;
-        uint64_t firstl = *(uint64_t *) first_len;
+        //int64_t test = *(int64_t *)text;
+        int64_t firstl = *(int64_t *) first_len;
         cout << firstl << endl;
+        if(firstl<1){
+            return -1;
+        }
 
         char text[firstl];
         char magic[4];
@@ -62,8 +74,13 @@ int main(int argc, char* argv[]) {
             sec_len[i] = text[i + 4];
         }
         pos += firstl;
-        uint64_t secl = *(uint64_t *) sec_len;
+        int64_t secl = *(int64_t *) sec_len;
         cout << secl << endl;
+
+        if(secl<1){
+            return -1;
+        }
+
         if(firstl!=secl){
             return -1;
         }
@@ -75,8 +92,11 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < 8; i++) {
             num_anim[i] = text[i + 12];
         }
-        uint64_t anim_number = *(uint64_t *) num_anim;
+        int64_t anim_number = *(int64_t *) num_anim;
         cout << anim_number << endl;
+        if(anim_number<1){
+            return -1;
+        }
 
         int id2 = (unsigned char)bytes.at(pos);
         cout << id2 << endl;
@@ -89,8 +109,11 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < 8; i++) {
             third_len[i] = bytes.at(i + pos);
         }
-        uint64_t tmp = *(uint64_t *) third_len;
+        int64_t tmp = *(int64_t *) third_len;
         cout << tmp << endl;
+        if(tmp<1){
+            return -1;
+        }
 
         pos += 8;
 
@@ -99,19 +122,40 @@ int main(int argc, char* argv[]) {
             yearc[i] = bytes.at(i + pos);
         }
         int year, month, day, hour, minute;
-        year = *(uint16_t *) yearc;
+        year = *(int16_t *) yearc;
         pos += 2;
+
+        //GIF első megjelenése
+        if(year<1987){
+            return -1;
+        }
 
         month = (int) (unsigned char)bytes.at(pos);
         pos += 1;
 
+        if(month<1 || month>12){
+            return -1;
+        }
+
         day = (int) (unsigned char)bytes.at(pos);
         pos += 1;
+
+        if(day<1 || (year % 4 ==0 && month == 2 && day>29) || (year % 4 >0 && month == 2 && day>28) || ((month==1 || month==3 || month==5 || month==7 || month==8 || month==10 || month==12) && day > 31) || ((month==4 || month==6 || month==9 || month==11) && day > 30)){
+            return -1;
+        }
 
         hour = (int) (unsigned char)bytes.at(pos);
         pos += 1;
 
+        if(hour<0 || hour>24){
+            return -1;
+        }
+
         minute = (int) (unsigned char)bytes.at(pos);
+
+        if(minute<0 || minute>60){
+            return -1;
+        }
         cout << year << '/' << month << '/' << day << ' ' << hour << ':' << minute << endl;
         pos += 1;
 
@@ -119,8 +163,13 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < 8; i++) {
             fourth_len[i] = bytes.at(i + pos);
         }
-        tmp = *(uint64_t *) fourth_len;
+        tmp = *(int64_t *) fourth_len;
         cout << tmp << endl;
+
+        if(tmp<0){
+            return -1;
+        }
+
         pos += 8;
 
         char creator[tmp];
@@ -150,8 +199,14 @@ int main(int argc, char* argv[]) {
             for (int j = 0; j < 8; j++) {
                 leng[j] = bytes.at(j + pos);
             }
-            tmp = *(uint64_t *) leng;
+            tmp = *(int64_t *) leng;
             cout << tmp << endl;
+
+            int64_t blocklength=tmp;
+
+            if(tmp<1){
+                return -1;
+            }
 
             pos += 8;
             //duration
@@ -160,16 +215,20 @@ int main(int argc, char* argv[]) {
                 dur[j] = bytes.at(j + pos);
             }
 
-            uint64_t duration;
+            int64_t duration;
 
-            duration = *(uint64_t *) dur;
+            duration = *(int64_t *) dur;
             cout << duration << endl;
+
+            if(duration<1){
+                return -1;
+            }
 
             pos += 8;
 
             //CIFF Image
-            uint64_t carry;
-            uint64_t imagepos = 0;
+            int64_t carry;
+            int64_t imagepos = 0;
 
             //CIFF Header
             char ciff[4];
@@ -190,44 +249,65 @@ int main(int argc, char* argv[]) {
             for (int j = 0; j < 8; j++) {
                 header_size[j] = bytes.at(j + pos + imagepos);
             }
-            carry = *(uint64_t *) header_size;
+            carry = *(int64_t *) header_size;
             cout << carry << endl;
+
+            if(carry<36){
+                return -1;
+            }
+
 
             imagepos += 8;
 
             //Content size
             char contentc[8];
-            uint64_t content;
+            int64_t content;
 
             for (int j = 0; j < 8; j++) {
                 contentc[j] = bytes.at(j + pos + imagepos);
             }
-            content = *(uint64_t *) contentc;
+            content = *(int64_t *) contentc;
             cout << content << endl;
+
+            if(content<0){
+                return -1;
+            }
+
+            if(carry+content+8!=blocklength){
+                return -1;
+            }
 
             imagepos += 8;
 
             //Image width
             char widthc[8];
-            uint64_t width;
+            int64_t width;
 
             for (int j = 0; j < 8; j++) {
                 widthc[j] = bytes.at(j + pos + imagepos);
             }
-            width = *(uint64_t *) widthc;
+            width = *(int64_t *) widthc;
             cout << width << endl;
+
+            if(width<0){
+                return -1;
+            }
 
             imagepos += 8;
 
             //Image Height
             char heightc[8];
-            uint64_t height;
+            int64_t height;
 
             for (int j = 0; j < 8; j++) {
                 heightc[j] = bytes.at(j + pos + imagepos);
             }
-            height = *(uint64_t *) heightc;
+            height = *(int64_t *) heightc;
             cout << height << endl;
+
+            if(height<0){
+                return -1;
+            }
 
             imagepos += 8;
 
@@ -246,6 +326,10 @@ int main(int argc, char* argv[]) {
                 }
             }
 
+            if(captionsize<0){
+                return -1;
+            }
+
             for (int j = 0; j < captionsize; j++) {
                 cout << captionc[j];
             }
@@ -256,6 +340,12 @@ int main(int argc, char* argv[]) {
 
             for (int j = 0; j < carry - 36 - captionsize; j++) {
                 tagc[j] = bytes.at(j + pos + imagepos);
+                if(tagc[j]=='\n'){
+                    return -1;
+                }
+                if(j==carry-37-captionsize && tagc[j] != '\0'){
+                    return -1;
+                }
             }
 
             for (int j = 0; j < carry - 36 - captionsize; j++) {
@@ -271,7 +361,7 @@ int main(int argc, char* argv[]) {
             }
 
             //TOJPEG------------------------------------------------------------------------------------
-
+            myFile.open(filenamefortest, std::ios_base::out | std::ios_base::binary);
             if (i == 0) {
                 TooJpeg::writeJpeg(myOutput, image, width, height, true, 90, false, captionc);
             }
@@ -283,17 +373,10 @@ int main(int argc, char* argv[]) {
         }
 
 
-        return 0;
     }if((string)argv[1]=="-ciff"){
-        char ciffog[4]{'C', 'I', 'F', 'F'};
-        ifstream MyFile(argv[2], ios::binary);
-        vector<char> bytes(
-                (std::istreambuf_iterator<char>(MyFile)),
-                (std::istreambuf_iterator<char>()));
-        MyFile.close();
 
-        uint64_t carry;
-        uint64_t imagepos = 0;
+        int64_t carry;
+        int64_t imagepos = 0;
 
         //CIFF Header
         char ciff[4];
@@ -314,44 +397,62 @@ int main(int argc, char* argv[]) {
         for (int j = 0; j < 8; j++) {
             header_size[j] = bytes.at(j + imagepos);
         }
-        carry = *(uint64_t *) header_size;
+        carry = *(int64_t *) header_size;
         cout << carry << endl;
+
+        if(carry<36){
+            return -1;
+        }
+
 
         imagepos += 8;
 
         //Content size
         char contentc[8];
-        uint64_t content;
+        int64_t content;
 
         for (int j = 0; j < 8; j++) {
             contentc[j] = bytes.at(j + imagepos);
         }
-        content = *(uint64_t *) contentc;
+        content = *(int64_t *) contentc;
         cout << content << endl;
+
+        if(content<0){
+            return -1;
+        }
+
 
         imagepos += 8;
 
         //Image width
         char widthc[8];
-        uint64_t width;
+        int64_t width;
 
         for (int j = 0; j < 8; j++) {
             widthc[j] = bytes.at(j + imagepos);
         }
-        width = *(uint64_t *) widthc;
+        width = *(int64_t *) widthc;
         cout << width << endl;
+
+        if(width<0){
+            return -1;
+        }
 
         imagepos += 8;
 
         //Image Height
         char heightc[8];
-        uint64_t height;
+        int64_t height;
 
         for (int j = 0; j < 8; j++) {
             heightc[j] = bytes.at(j + imagepos);
         }
-        height = *(uint64_t *) heightc;
+        height = *(int64_t *) heightc;
         cout << height << endl;
+
+        if(height<0){
+            return -1;
+        }
 
         imagepos += 8;
 
@@ -370,6 +471,10 @@ int main(int argc, char* argv[]) {
             }
         }
 
+        if(captionsize<0){
+            return -1;
+        }
+
         for (int j = 0; j < captionsize; j++) {
             cout << captionc[j];
         }
@@ -380,6 +485,12 @@ int main(int argc, char* argv[]) {
 
         for (int j = 0; j < carry - 36 - captionsize; j++) {
             tagc[j] = bytes.at(j + imagepos);
+            if(tagc[j]=='\n'){
+                return -1;
+            }
+            if(j==carry-37-captionsize && tagc[j] != '\0'){
+                return -1;
+            }
         }
 
         for (int j = 0; j < carry - 36 - captionsize; j++) {
@@ -395,9 +506,11 @@ int main(int argc, char* argv[]) {
         }
 
         //TOJPEG------------------------------------------------------------------------------------
-
+        myFile.open(filenamefortest, std::ios_base::out | std::ios_base::binary);
         TooJpeg::writeJpeg(myOutput, image, width, height, true, 90, false, captionc);
+        //---------------------------------------------------------------------------------------------
 
-        return 0;
     }
+    MyFile.close();
+    return 0;
 }
